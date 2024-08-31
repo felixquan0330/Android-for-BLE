@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -16,6 +17,7 @@ import com.hossameid.blescanner.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private val viewModel: BluetoothViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +34,34 @@ class MainActivity : AppCompatActivity() {
 
         checkAndRequestPermissions()
 
+        binding.connectBtn.setOnClickListener { onConnectBtnClick() }
+    }
+
+    private fun onConnectBtnClick()
+    {
+        val permissions = checkPermissions()
+
+        //Check if the permissions were granted
+        if(permissions.isNotEmpty())
+        {
+            Toast.makeText(this, "Permissions Denied!", Toast.LENGTH_SHORT).show()
+        }else{
+            binding.macAddressLayout.error = null
+            binding.usernameEditText.error = null
+
+            val macAddress = binding.macAddressEditText.text.toString()
+            val name = binding.usernameEditText.text.toString()
+
+            if(macAddress.isEmpty() and name.isEmpty())
+            {
+                binding.macAddressLayout.error = "Please enter a MAC address or a name"
+                binding.usernameEditText.error = "Please enter a name or a MAC address"
+                return
+            }
+
+            //Start scanning
+            viewModel.scanLeDevice(macAddress, name)
+        }
     }
 
     private fun checkBLEAvailability() {
@@ -75,14 +105,19 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun checkAndRequestPermissions() {
-        val permissionsToRequest = bluetoothPermissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
+        val permissionsToRequest = checkPermissions()
+
         if (permissionsToRequest.isNotEmpty()) {
             requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
         }else{
             binding.connectBtn.isEnabled = true
             binding.disconnectBtn.isEnabled = true
+        }
+    }
+
+    private fun checkPermissions(): List<String>{
+        return bluetoothPermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
     }
 }
