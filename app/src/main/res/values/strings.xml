@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">BLE_Scanner</string>
+    <string name="connection_status">Connection Status:</string>
+    <string name="disconnected_state">Disconnected</string>
+    <string name="mac_address">Mac Address</string>
+    <string name="username">Name</string>
+    <string name="characteristic">Characteristic</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
 </resources>

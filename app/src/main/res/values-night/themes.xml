@@ -2,6 +2,10 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.BLE_Scanner" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+        <item name="colorPrimary">@color/primaryColor</item>
+        <item name="colorAccent">@color/primaryAccent</item>
+
+        <item name="backgroundColor">@color/backgroundColor</item>
+        <item name="colorError">@android:color/holo_red_light</item>
     </style>
 </resources>
