@@ -1,5 +1,6 @@
 package com.hossameid.blescanner.presentation;
 
+
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -13,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.hossameid.blescanner.R;
 import com.hossameid.blescanner.databinding.ActivityMainBinding;
 import com.hossameid.blescanner.utils.MACAddressValidator;
 
@@ -46,10 +48,22 @@ public class MainActivity extends AppCompatActivity {
 
     private void subscribeToObservers() {
         viewModel.getScanResult().observe(this, scanResult -> {
-            if (scanResult.equals("device found"))
-                Toast.makeText(this, "Device found", Toast.LENGTH_SHORT).show();
-            else if (scanResult.equals("device not found"))
-                Toast.makeText(this, "Device not found", Toast.LENGTH_SHORT).show();
+            switch (scanResult) {
+                case "Scanning":
+                    binding.connectionStatusTextView.setText(
+                            ContextCompat.getString(this, R.string.scanning));
+                    break;
+                case "device found":
+                    binding.connectionStatusTextView.setText(
+                            ContextCompat.getString(this, R.string.connected));
+                    Toast.makeText(this, "Device found", Toast.LENGTH_SHORT).show();
+                    break;
+                case "device not found":
+                    binding.connectionStatusTextView.setText(
+                            ContextCompat.getString(this, R.string.disconnected));
+                    Toast.makeText(this, "Device not found", Toast.LENGTH_SHORT).show();
+                    break;
+            }
         });
     }
 

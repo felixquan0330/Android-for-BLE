@@ -7,4 +7,9 @@
     <string name="characteristic">Characteristic</string>
     <string name="connect">Connect</string>
     <string name="disconnect">Disconnect</string>
+
+    <!--  Connection Status  -->
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="scanning">Scanning</string>
 </resources>

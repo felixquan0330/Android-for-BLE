@@ -24,7 +24,7 @@ public class BluetoothViewModel extends AndroidViewModel {
     // Stops scanning after 10 seconds.
     private static final long SCAN_PERIOD = 10000;
 
-    private MutableLiveData<String> scanResult = new MutableLiveData<>();
+    private final MutableLiveData<String> scanResult = new MutableLiveData<>();
 
     public MutableLiveData<String> getScanResult() {
         return scanResult;
@@ -72,6 +72,7 @@ public class BluetoothViewModel extends AndroidViewModel {
                     .build();
 
             bluetoothLeScanner.startScan(List.of(filter), settings, leScanCallback);
+            scanResult.setValue("Scanning");
             Log.d("BLE_SCAN_CALLBACK", "scanLeDevice: started scanning");
         } else {
             scanning = false;
