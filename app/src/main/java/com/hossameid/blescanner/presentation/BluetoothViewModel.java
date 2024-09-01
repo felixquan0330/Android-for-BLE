@@ -38,15 +38,21 @@ public class BluetoothViewModel extends AndroidViewModel {
             }, SCAN_PERIOD);
 
             scanning = true;
-//            ScanFilter filter = new ScanFilter.Builder()
-//                    .setDeviceName(name)
-//                    .setDeviceAddress(macAddress)
-//                    .build();
-//            ScanSettings settings = new ScanSettings.Builder()
-//                    .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
-//                    .build();
-//            bluetoothLeScanner.startScan(List.of(filter) ,settings, leScanCallback);
-            bluetoothLeScanner.startScan(leScanCallback);
+            ScanFilter.Builder builder = new ScanFilter.Builder();
+
+            if (!macAddress.isEmpty())
+                builder.setDeviceAddress(macAddress);
+
+            if(!name.isEmpty())
+                builder.setDeviceName(name);
+
+            ScanFilter filter = builder.build();
+
+            ScanSettings settings = new ScanSettings.Builder()
+                    .setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES)
+                    .build();
+
+            bluetoothLeScanner.startScan(List.of(filter), settings, leScanCallback);
             Log.d("BLE_SCAN_CALLBACK", "scanLeDevice: started scanning");
         } else {
             scanning = false;

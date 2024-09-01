@@ -4,7 +4,6 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -73,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Define the required permissions based on the Android version
-    private final String[] bluetoothPermissions = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    private final String[] AppPermissions = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
             ? new String[]{
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT,
@@ -134,15 +133,11 @@ public class MainActivity extends AppCompatActivity {
     // Method to check which permissions are not yet granted
     private List<String> checkPermissions() {
         List<String> permissionsToRequest = new ArrayList<>();
-        for (String permission : bluetoothPermissions) {
+        for (String permission : AppPermissions) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
                 permissionsToRequest.add(permission);
-                Log.d("PermissionsCheck", "Permission needed: " + permission);
-            }else{
-                Log.d("PermissionsCheck", "Permission already granted" + permission);
             }
         }
         return permissionsToRequest;
     }
-
 }
