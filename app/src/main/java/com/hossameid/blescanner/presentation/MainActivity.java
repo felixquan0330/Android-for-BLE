@@ -5,13 +5,17 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.widget.Toast;
+
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
+
 import com.hossameid.blescanner.databinding.ActivityMainBinding;
+import com.hossameid.blescanner.utils.MACAddressValidator;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +39,18 @@ public class MainActivity extends AppCompatActivity {
 
         checkAndRequestPermissions();
 
+        subscribeToObservers();
+
         binding.connectBtn.setOnClickListener(v -> onConnectBtnClick());
+    }
+
+    private void subscribeToObservers() {
+        viewModel.getScanResult().observe(this, scanResult -> {
+            if (scanResult.equals("device found"))
+                Toast.makeText(this, "Device found", Toast.LENGTH_SHORT).show();
+            else if (scanResult.equals("device not found"))
+                Toast.makeText(this, "Device not found", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void onConnectBtnClick() {
@@ -57,8 +72,16 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // Start scanning
-            viewModel.scanLeDevice(macAddress, name);
+            if (!macAddress.isEmpty() && !MACAddressValidator.isValidMACAddress(macAddress)) {
+                binding.macAddressLayout.setError("Invalid MAC address");
+                return;
+            }
+
+            if (name.isEmpty()) {
+
+                // Start scanning
+                viewModel.scanLeDevice(macAddress, name);
+            }
         }
     }
 
