@@ -1,6 +1,5 @@
 package com.hossameid.blescanner.presentation;
 
-
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -52,16 +51,19 @@ public class MainActivity extends AppCompatActivity {
                 case "Scanning":
                     binding.connectionStatusTextView.setText(
                             ContextCompat.getString(this, R.string.scanning));
+                    binding.connectBtn.setEnabled(false);
                     break;
                 case "device found":
                     binding.connectionStatusTextView.setText(
                             ContextCompat.getString(this, R.string.connected));
                     Toast.makeText(this, "Device found", Toast.LENGTH_SHORT).show();
+                    binding.connectBtn.setEnabled(true);
                     break;
                 case "device not found":
                     binding.connectionStatusTextView.setText(
                             ContextCompat.getString(this, R.string.disconnected));
                     Toast.makeText(this, "Device not found", Toast.LENGTH_SHORT).show();
+                    binding.connectBtn.setEnabled(true);
                     break;
             }
         });
@@ -91,11 +93,8 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            if (name.isEmpty()) {
-
-                // Start scanning
-                viewModel.scanLeDevice(macAddress, name);
-            }
+            // Start scanning
+            viewModel.scanLeDevice(macAddress, name);
         }
     }
 
