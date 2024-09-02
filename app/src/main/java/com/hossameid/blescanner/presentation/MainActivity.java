@@ -1,22 +1,22 @@
 package com.hossameid.blescanner.presentation;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.widget.Toast;
-
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
-
 import com.hossameid.blescanner.R;
 import com.hossameid.blescanner.databinding.ActivityMainBinding;
+import com.hossameid.blescanner.system.MyBleForegroundService;
 import com.hossameid.blescanner.utils.MACAddressValidator;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
                     binding.connectionStatusTextView.setText(
                             ContextCompat.getString(this, R.string.connected));
                     Toast.makeText(this, "Device found", Toast.LENGTH_SHORT).show();
+                    startForegroundService();
                     binding.connectBtn.setEnabled(true);
                     break;
                 case "device not found":
@@ -67,6 +68,18 @@ public class MainActivity extends AppCompatActivity {
                     break;
             }
         });
+    }
+
+    @SuppressLint("MissingPermission")
+    private void startForegroundService() {
+        Intent serviceIntent = new Intent(this, MyBleForegroundService.class);
+        serviceIntent.putExtra("bluetooth_device", viewModel.getDevice());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(this, serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
     }
 
     private void onConnectBtnClick() {

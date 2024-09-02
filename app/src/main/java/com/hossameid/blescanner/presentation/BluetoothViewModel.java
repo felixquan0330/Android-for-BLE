@@ -2,6 +2,7 @@ package com.hossameid.blescanner.presentation;
 
 import android.annotation.SuppressLint;
 import android.app.Application;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
@@ -20,16 +21,15 @@ public class BluetoothViewModel extends AndroidViewModel {
     private boolean scanning = false;
     private boolean deviceFound = false;
     private final Handler handler = new Handler();
+    private final Runnable stopScanRunnable;
 
     // Stops scanning after 10 seconds.
     private static final long SCAN_PERIOD = 10000;
 
     private final MutableLiveData<String> scanResult = new MutableLiveData<>();
+    private BluetoothDevice device = null;
 
-    public MutableLiveData<String> getScanResult() {
-        return scanResult;
-    }
-
+    @SuppressLint("MissingPermission")
     public BluetoothViewModel(Application application) {
         super(application);
         BluetoothManager bluetoothManager = application.getSystemService(BluetoothManager.class);
@@ -37,23 +37,25 @@ public class BluetoothViewModel extends AndroidViewModel {
         bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
 
         scanResult.setValue("not scanning");
+
+        stopScanRunnable = () -> {
+            scanning = false;
+            bluetoothLeScanner.stopScan(leScanCallback);
+
+            if (deviceFound)
+                scanResult.setValue("device found");
+            else
+                scanResult.setValue("device not found");
+
+            Log.d("BLE_SCAN_CALLBACK", "scanLeDevice: stopped scanning");
+        };
     }
 
     @SuppressLint("MissingPermission")
     public void scanLeDevice(String macAddress, String name) {
         if (!scanning) {
             // Stops scanning after a predefined scan period.
-            handler.postDelayed(() -> {
-                scanning = false;
-                bluetoothLeScanner.stopScan(leScanCallback);
-
-                if(deviceFound)
-                    scanResult.setValue("device found");
-                else
-                    scanResult.setValue("device not found");
-
-                Log.d("BLE_SCAN_CALLBACK", "scanLeDevice: stopped scanning");
-            }, SCAN_PERIOD);
+            handler.postDelayed(stopScanRunnable, SCAN_PERIOD);
 
             scanning = true;
             deviceFound = false;
@@ -82,11 +84,27 @@ public class BluetoothViewModel extends AndroidViewModel {
 
     // Device scan callback.
     private final ScanCallback leScanCallback = new ScanCallback() {
+        @SuppressLint("MissingPermission")
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             super.onScanResult(callbackType, result);
-            deviceFound = true;
             Log.d("BLE_SCAN_CALLBACK", "onScanResult: " + result);
+
+            deviceFound = true;
+            device = result.getDevice();
+            scanResult.setValue("device found");
+            handler.removeCallbacks(stopScanRunnable);
+            bluetoothLeScanner.stopScan(leScanCallback);
+
+            Log.d("BLE_SCAN_CALLBACK", "scanLeDevice: stopped scanning");
         }
     };
+
+    public MutableLiveData<String> getScanResult() {
+        return scanResult;
+    }
+
+    public BluetoothDevice getDevice() {
+        return device;
+    }
 }
