@@ -2,7 +2,10 @@ package com.hossameid.blescanner.presentation;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -13,6 +16,8 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.hossameid.blescanner.R;
 import com.hossameid.blescanner.databinding.ActivityMainBinding;
 import com.hossameid.blescanner.system.MyBleForegroundService;
@@ -43,6 +48,10 @@ public class MainActivity extends AppCompatActivity {
         subscribeToObservers();
 
         binding.connectBtn.setOnClickListener(v -> onConnectBtnClick());
+
+        // Register the receiver
+        LocalBroadcastManager.getInstance(this).registerReceiver(connectionStatusReceiver,
+                new IntentFilter("ACTION_CONNECTION_STATUS"));
     }
 
     private void subscribeToObservers() {
@@ -110,6 +119,15 @@ public class MainActivity extends AppCompatActivity {
             viewModel.scanLeDevice(macAddress, name);
         }
     }
+
+    private final BroadcastReceiver connectionStatusReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String status = intent.getStringExtra("status");
+            // Update the UI with the connection status
+            binding.connectionStatusTextView.setText(status);
+        }
+    };
 
     private void checkBLEAvailability() {
         // Check to see if the BLE feature is available.

@@ -17,6 +17,8 @@ import android.os.Looper;
 import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.hossameid.blescanner.R;
 
 public class MyBleForegroundService extends Service {
@@ -74,11 +76,13 @@ public class MyBleForegroundService extends Service {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 // Successfully connected
                 Log.d("BLE_CONNECTION", "onConnectionStateChange: connected");
+                sendConnectionStatusBroadcast("Connected");
                 gatt.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 // Disconnected, attempt to reconnect
                 Log.d("BLE_CONNECTION", "onConnectionStateChange: disconnected" + status);
                 gatt.close();
+                sendConnectionStatusBroadcast("Disconnected");
                 reconnectToDevice();
             }
         }
@@ -103,9 +107,16 @@ public class MyBleForegroundService extends Service {
         // Reconnect with a delay to avoid excessive connection attempts
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (device != null) {
+                sendConnectionStatusBroadcast("Reconnecting");
                 connectToDevice();
             }
         }, 5000); // Reconnect after 5 seconds
+    }
+
+    private void sendConnectionStatusBroadcast(String status) {
+        Intent intent = new Intent("ACTION_CONNECTION_STATUS");
+        intent.putExtra("status", status);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     @SuppressLint("MissingPermission")
