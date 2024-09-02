@@ -8,15 +8,10 @@ import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
-import android.content.Intent;
 import android.os.Handler;
 import android.util.Log;
-
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.MutableLiveData;
-
-import com.hossameid.blescanner.system.MyBleForegroundService;
-
 import java.util.List;
 
 public class BluetoothViewModel extends AndroidViewModel {

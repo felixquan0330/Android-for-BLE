@@ -227,11 +227,6 @@ public class MyBleForegroundService extends Service {
         handler.post(readRunnable); // Start the first execution
     }
 
-    // Stop reading the characteristic
-    public void stopReadingCharacteristic() {
-        handler.removeCallbacks(readRunnable); // Stop further executions
-    }
-
     private String getCharacteristicUUID(BluetoothGattCharacteristic characteristic) {
         return (characteristicUUID.length() == 4) ?
                 convertUUID(characteristic.getUuid().toString()) :
