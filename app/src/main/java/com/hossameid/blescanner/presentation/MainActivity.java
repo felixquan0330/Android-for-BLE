@@ -17,7 +17,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 import com.hossameid.blescanner.R;
 import com.hossameid.blescanner.databinding.ActivityMainBinding;
 import com.hossameid.blescanner.system.MyBleForegroundService;
@@ -47,11 +46,26 @@ public class MainActivity extends AppCompatActivity {
 
         subscribeToObservers();
 
+        registerBroadcastReceivers();
+
         binding.connectBtn.setOnClickListener(v -> onConnectBtnClick());
 
-        // Register the receiver
+        binding.disconnectBtn.setOnClickListener(v -> onDisconnectBtnClick());
+    }
+
+    private void registerBroadcastReceivers()
+    {
+        // Register the connection status receiver
         LocalBroadcastManager.getInstance(this).registerReceiver(connectionStatusReceiver,
                 new IntentFilter("ACTION_CONNECTION_STATUS"));
+
+        // Register the characteristic value receiver
+        LocalBroadcastManager.getInstance(this).registerReceiver(characteristicValueReceiver,
+                new IntentFilter("ACTION_CHARACTERISTIC_VALUE"));
+
+        // Register the characteristic value receiver
+        LocalBroadcastManager.getInstance(this).registerReceiver(characteristicUuidReceiver,
+                new IntentFilter("ACTION_CHARACTERISTIC_UUID"));
     }
 
     private void subscribeToObservers() {
@@ -83,7 +97,8 @@ public class MainActivity extends AppCompatActivity {
     private void startForegroundService() {
         Intent serviceIntent = new Intent(this, MyBleForegroundService.class);
         serviceIntent.putExtra("bluetooth_device", viewModel.getDevice());
-        serviceIntent.putExtra("characteristic", binding.characteristicEditText.getText());
+        serviceIntent.putExtra("characteristic",
+                Objects.requireNonNull(binding.characteristicEditText.getText()).toString());
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ContextCompat.startForegroundService(this, serviceIntent);
@@ -121,12 +136,41 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void onDisconnectBtnClick()
+    {
+        //Kill the background service which will disconnect the BLE client
+        Intent serviceIntent = new Intent(this, MyBleForegroundService.class);
+        stopService(serviceIntent);
+
+        //Reset the UI
+        binding.connectionStatusTextView.setText(ContextCompat.getString(this, R.string.disconnected));
+        binding.uuidTextView.setText(ContextCompat.getString(this, R.string.n_a));
+    }
+
     private final BroadcastReceiver connectionStatusReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String status = intent.getStringExtra("status");
             // Update the UI with the connection status
             binding.connectionStatusTextView.setText(status);
+        }
+    };
+
+    private final BroadcastReceiver characteristicValueReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String value = intent.getStringExtra("value");
+            // Update the UI with the new characteristic value
+            binding.valueTextView.setText(value);
+        }
+    };
+
+    private final BroadcastReceiver characteristicUuidReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String uuid = intent.getStringExtra("uuid");
+            // Update the UI with the new characteristic value
+            binding.uuidTextView.setText(uuid);
         }
     };
 

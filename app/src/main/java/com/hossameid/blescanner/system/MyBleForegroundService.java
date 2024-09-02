@@ -34,14 +34,22 @@ public class MyBleForegroundService extends Service {
     private BluetoothGatt bluetoothGatt;
     private BluetoothDevice device;
     private String characteristicUUID;
-    private final String UUID_HEART_RATE_MEASUREMENT = "0000180d-0000-1000-8000-00805f9b34fb";
-    private final String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb";
+    private BluetoothGattCharacteristic characteristic;
+    private Handler handler;
+    private Runnable readRunnable;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        handler = new Handler(Looper.getMainLooper()); // Runs on the main thread
+        initReadRunnable();
+    }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d("BLE_CONNECTION", "onStartCommand: Starting background service");
         device = intent.getParcelableExtra("bluetooth_device");
-        characteristicUUID = "2a37";
+        characteristicUUID = intent.getStringExtra("characteristic");
 
         if (device != null) {
             connectToDevice();
@@ -107,6 +115,7 @@ public class MyBleForegroundService extends Service {
             if (status == BluetoothGatt.GATT_SUCCESS) {
 
                 List<BluetoothGattService> services = gatt.getServices();
+                boolean charaFound = false;
 
                 for (BluetoothGattService service : services) {
                     Log.d("BLE_CONNECTION", "onServicesDiscovered: " + service.getUuid().toString());
@@ -116,26 +125,21 @@ public class MyBleForegroundService extends Service {
                     for (BluetoothGattCharacteristic characteristic : characteristics) {
 
                         //If the user inputs a 16 bit UUID then convert 128 bit UUID to 16 bit
-                        String currentCharacteristicUUID;
-                        if (characteristicUUID.length() == 4) {
-                            currentCharacteristicUUID = convertUUID(characteristic.getUuid().toString());
-                        } else {
-                            currentCharacteristicUUID = characteristic.getUuid().toString();
-                        }
+                        String currentCharacteristicUUID = getCharacteristicUUID(characteristic);
 
                         if (characteristicUUID.equalsIgnoreCase(currentCharacteristicUUID)) {
-                            //Check the type of characteristic permission
+                            listenToCharacteristic(characteristic);
 
-                            //Use this in case of read
-                            gatt.readCharacteristic(characteristic);
-
-                            // Use this in case of notify
-                            setCharacteristicNotification(characteristic, true);
+                            //Stop the search
+                            charaFound = true;
                         }
-
                         Log.d("BLE_CONNECTION", "onServicesDiscovered: " +
                                 characteristic.getUuid().toString());
                     }
+
+                    //Stop the search
+                    if (charaFound)
+                        break;
                 }
             }
         }
@@ -144,14 +148,95 @@ public class MyBleForegroundService extends Service {
         public void onCharacteristicRead(@NonNull BluetoothGatt gatt, @NonNull BluetoothGattCharacteristic characteristic, @NonNull byte[] value, int status) {
             super.onCharacteristicRead(gatt, characteristic, value, status);
             Log.d("BLE_CONNECTION", "onCharacteristicRead: " + Arrays.toString(value));
+            extractData(characteristic);
         }
 
         @Override
-        public void onCharacteristicChanged(@NonNull BluetoothGatt gatt, @NonNull BluetoothGattCharacteristic characteristic, @NonNull byte[] value) {
+        public void onCharacteristicChanged(@NonNull BluetoothGatt
+                                                    gatt, @NonNull BluetoothGattCharacteristic characteristic, @NonNull byte[] value) {
             super.onCharacteristicChanged(gatt, characteristic, value);
             Log.d("BLE_CONNECTION", "onCharacteristicChanged: " + Arrays.toString(value));
+            extractData(characteristic);
         }
     };
+
+    private void extractData(BluetoothGattCharacteristic characteristic) {
+        String UUID_HEART_RATE_MEASUREMENT = "00002a37-0000-1000-8000-00805f9b34fb";
+
+        if (UUID_HEART_RATE_MEASUREMENT.equals(characteristic.getUuid().toString())) {
+            int flag = characteristic.getProperties();
+            int format;
+            if ((flag & 0x01) != 0) {
+                format = BluetoothGattCharacteristic.FORMAT_UINT16;
+                Log.d("BLE_CONNECTION", "Heart rate format UINT16.");
+            } else {
+                format = BluetoothGattCharacteristic.FORMAT_UINT8;
+                Log.d("BLE_CONNECTION", "Heart rate format UINT8.");
+            }
+            final int heartRate = characteristic.getIntValue(format, 1);
+            Log.d("BLE_CONNECTION", String.format("Received heart rate: %d", heartRate));
+            sendCharacteristicValueBroadcast(String.valueOf(heartRate));
+        } else {
+            // For all other profiles, writes the data formatted in HEX.
+            final byte[] data = characteristic.getValue();
+            if (data != null && data.length > 0) {
+                final StringBuilder stringBuilder = new StringBuilder(data.length);
+                for (byte byteChar : data)
+                    stringBuilder.append(String.format("%02X ", byteChar));
+                sendCharacteristicValueBroadcast(new String(data) + "  " + stringBuilder);
+            }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private void listenToCharacteristic(BluetoothGattCharacteristic characteristic) {
+        //Check the type of characteristic property
+        int property = characteristic.getProperties();
+
+        if (property == BluetoothGattCharacteristic.PROPERTY_READ) {
+            //Use this in case of read
+            this.characteristic = characteristic;
+
+            startReadingCharacteristic();
+        } else if (property == BluetoothGattCharacteristic.PROPERTY_NOTIFY ||
+                property == BluetoothGattCharacteristic.PROPERTY_INDICATE) {
+            // Use this in case of notify or indicate
+            setCharacteristicNotification(characteristic, true);
+        }
+
+        sendCharacteristicUuidBroadcast(characteristic.getUuid().toString());
+    }
+
+    // Initialize the Runnable that will read the characteristic
+    private void initReadRunnable() {
+        readRunnable = new Runnable() {
+            @SuppressLint("MissingPermission")
+            @Override
+            public void run() {
+                if (bluetoothGatt != null && characteristic != null) {
+                    bluetoothGatt.readCharacteristic(characteristic);
+                }
+                // Schedule the next read after 1 second
+                handler.postDelayed(this, 1000);
+            }
+        };
+    }
+
+    // Start reading the characteristic every second
+    public void startReadingCharacteristic() {
+        handler.post(readRunnable); // Start the first execution
+    }
+
+    // Stop reading the characteristic
+    public void stopReadingCharacteristic() {
+        handler.removeCallbacks(readRunnable); // Stop further executions
+    }
+
+    private String getCharacteristicUUID(BluetoothGattCharacteristic characteristic) {
+        return (characteristicUUID.length() == 4) ?
+                convertUUID(characteristic.getUuid().toString()) :
+                characteristic.getUuid().toString();
+    }
 
     private String convertUUID(String uuid) {
         String[] splitedString = uuid.split("-");
@@ -167,13 +252,18 @@ public class MyBleForegroundService extends Service {
         }
         bluetoothGatt.setCharacteristicNotification(characteristic, enabled);
 
-        // This is specific to Heart Rate Measurement.
-        if (UUID_HEART_RATE_MEASUREMENT.equals(characteristic.getUuid().toString())) {
-            BluetoothGattDescriptor descriptor = characteristic.
-                    getDescriptor(UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG));
+        String CLIENT_CHARACTERISTIC_CONFIG = "00002902-0000-1000-8000-00805f9b34fb";
+
+        BluetoothGattDescriptor descriptor = characteristic.
+                getDescriptor(UUID.fromString(CLIENT_CHARACTERISTIC_CONFIG));
+
+        int property = characteristic.getProperties();
+        if (property == BluetoothGattCharacteristic.PROPERTY_NOTIFY)
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-            bluetoothGatt.writeDescriptor(descriptor);
-        }
+        else if (property == BluetoothGattCharacteristic.PROPERTY_INDICATE)
+            descriptor.setValue(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
+
+        bluetoothGatt.writeDescriptor(descriptor);
     }
 
 
@@ -200,6 +290,18 @@ public class MyBleForegroundService extends Service {
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
+    private void sendCharacteristicValueBroadcast(String value) {
+        Intent intent = new Intent("ACTION_CHARACTERISTIC_VALUE");
+        intent.putExtra("value", value);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    private void sendCharacteristicUuidBroadcast(String uuid) {
+        Intent intent = new Intent("ACTION_CHARACTERISTIC_UUID");
+        intent.putExtra("uuid", uuid);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
     @SuppressLint("MissingPermission")
     @Override
     public void onDestroy() {
@@ -208,5 +310,7 @@ public class MyBleForegroundService extends Service {
             bluetoothGatt = null;
         }
         super.onDestroy();
+        stopForeground(true);
+        stopSelf();
     }
 }

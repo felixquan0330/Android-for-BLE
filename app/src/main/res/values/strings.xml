@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">BLE_Scanner</string>
-    <string name="connection_status">Connection Status:</string>
+    <string name="connection_status">Status:</string>
     <string name="disconnected_state">Disconnected</string>
     <string name="mac_address">Mac Address</string>
     <string name="username">Name</string>
@@ -12,4 +12,7 @@
     <string name="connected">Connected</string>
     <string name="disconnected">Disconnected</string>
     <string name="scanning">Scanning</string>
+    <string name="uuid">UUID:</string>
+    <string name="n_a">N/A</string>
+    <string name="value">Value:</string>
 </resources>
