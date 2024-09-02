@@ -83,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
     private void startForegroundService() {
         Intent serviceIntent = new Intent(this, MyBleForegroundService.class);
         serviceIntent.putExtra("bluetooth_device", viewModel.getDevice());
+        serviceIntent.putExtra("characteristic", binding.characteristicEditText.getText());
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ContextCompat.startForegroundService(this, serviceIntent);
