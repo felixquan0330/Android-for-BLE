@@ -3,12 +3,15 @@ package com.hossameid.blescanner.presentation;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -30,6 +33,9 @@ public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
     private BluetoothViewModel viewModel;
+    private Context context;
+    private MyBleForegroundService myService;
+    private boolean isBound = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +57,36 @@ public class MainActivity extends AppCompatActivity {
         binding.connectBtn.setOnClickListener(v -> onConnectBtnClick());
 
         binding.disconnectBtn.setOnClickListener(v -> onDisconnectBtnClick());
+
+        bindToBleService();
+    }
+    private final ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            MyBleForegroundService.LocalBinder binder = (MyBleForegroundService.LocalBinder) service;
+            myService = binder.getService();
+            isBound = true;
+
+            // Check if still connected
+            boolean isConnected = myService.isDeviceConnected();
+            if (isConnected) {
+                binding.connectionStatusTextView.setText(ContextCompat.getString(context, R.string.connected));
+                binding.uuidTextView.setText(myService.getUuid());
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            isBound = false;
+        }
+    };
+
+    private void bindToBleService()
+    {
+        // Bind to MyBleService
+        context = this;
+        Intent intent = new Intent(this, MyBleForegroundService.class);
+        bindService(intent, connection, Context.BIND_AUTO_CREATE);
     }
 
     private void registerBroadcastReceivers()
@@ -139,8 +175,7 @@ public class MainActivity extends AppCompatActivity {
     private void onDisconnectBtnClick()
     {
         //Kill the background service which will disconnect the BLE client
-        Intent serviceIntent = new Intent(this, MyBleForegroundService.class);
-        stopService(serviceIntent);
+        myService.stopService();
 
         //Reset the UI
         binding.connectionStatusTextView.setText(ContextCompat.getString(this, R.string.disconnected));
@@ -251,5 +286,15 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return permissionsToRequest;
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Unbind from the service
+        if (isBound) {
+            unbindService(connection);
+            isBound = false;
+        }
     }
 }

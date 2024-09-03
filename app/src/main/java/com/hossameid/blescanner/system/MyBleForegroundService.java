@@ -13,19 +13,16 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
+import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
-
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 import com.hossameid.blescanner.R;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -34,7 +31,8 @@ public class MyBleForegroundService extends Service {
     private BluetoothGatt bluetoothGatt;
     private BluetoothDevice device;
     private String characteristicUUID;
-    private BluetoothGattCharacteristic characteristic;
+    private BluetoothGattCharacteristic currentCharacteristic;
+    private boolean isConnected = false;
     private Handler handler;
     private Runnable readRunnable;
 
@@ -62,10 +60,37 @@ public class MyBleForegroundService extends Service {
         return START_STICKY;
     }
 
-    @Nullable
+    // Binder given to clients
+    private final IBinder binder = new LocalBinder();
+
+    public class LocalBinder extends Binder {
+        public MyBleForegroundService getService() {
+            // Return this instance of MyBleForegroundService so clients can call public methods
+            return MyBleForegroundService.this;
+        }
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return binder;
+    }
+
+    // Method to check connection status
+    public boolean isDeviceConnected() {
+        return isConnected;
+    }
+
+    public String getUuid()
+    {
+        if(currentCharacteristic != null)
+            return currentCharacteristic.getUuid().toString();
+
+        return characteristicUUID;
+    }
+
+    public void stopService()
+    {
+        onDestroy();
     }
 
     private void createNotificationChannel() {
@@ -99,11 +124,13 @@ public class MyBleForegroundService extends Service {
                 // Successfully connected
                 Log.d("BLE_CONNECTION", "onConnectionStateChange: connected");
                 sendConnectionStatusBroadcast("Connected");
+                isConnected = true;
                 gatt.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 // Disconnected, attempt to reconnect
                 Log.d("BLE_CONNECTION", "onConnectionStateChange: disconnected" + status);
                 gatt.close();
+                isConnected = false;
                 sendConnectionStatusBroadcast("Disconnected");
                 reconnectToDevice();
             }
@@ -195,7 +222,7 @@ public class MyBleForegroundService extends Service {
 
         if (property == BluetoothGattCharacteristic.PROPERTY_READ) {
             //Use this in case of read
-            this.characteristic = characteristic;
+            this.currentCharacteristic = characteristic;
 
             startReadingCharacteristic();
         } else if (property == BluetoothGattCharacteristic.PROPERTY_NOTIFY ||
@@ -213,8 +240,8 @@ public class MyBleForegroundService extends Service {
             @SuppressLint("MissingPermission")
             @Override
             public void run() {
-                if (bluetoothGatt != null && characteristic != null) {
-                    bluetoothGatt.readCharacteristic(characteristic);
+                if (bluetoothGatt != null && currentCharacteristic != null) {
+                    bluetoothGatt.readCharacteristic(currentCharacteristic);
                 }
                 // Schedule the next read after 1 second
                 handler.postDelayed(this, 1000);
@@ -307,5 +334,7 @@ public class MyBleForegroundService extends Service {
         super.onDestroy();
         stopForeground(true);
         stopSelf();
+
+        isConnected = false;
     }
 }
